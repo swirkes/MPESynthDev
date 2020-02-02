@@ -48,24 +48,54 @@ public:
     //==============================================================================
     void prepareToPlay (int samplesPerBlockExpected, double sampleRate) override
     {
-        // This function will be called when the audio device is started, or when
-        // its settings (i.e. sample rate, block size, etc) are changed.
-
-        // You can use this function to initialise any resources you might need,
-        // but be careful - it will be called on the audio thread, not the GUI thread.
-
-        // For more details, see the help for AudioProcessor::prepareToPlay()
+        frequency = 440;
+            phase = 0;
+            wtSize = 1024;
+            increment = frequency * wtSize / sampleRate;
+            amplitude = 0.25;
+            
+            //one cycle of a sine wave
+        //    for (auto i = 0; i < wtSize; i++)
+        //    {
+        //        waveTable.insert(i, sin(2.0 * double_Pi * i / wtSize));
+        //    }
+            //one cycle square wave
+        //    for (auto i = 0; i < wtSize; i++)
+        //    {
+        //        if (i < wtSize / 2)
+        //            waveTable.insert(i, -1);
+        //        else
+        //            waveTable.insert(i, 1);
+        //    }
+            
+            
+            //one cycle triangle wave
+            for (auto i = 0; i < wtSize; i++)
+            {
+                waveTable.insert(i, phase);
+                if (i < wtSize * 0.25)
+                    waveTable.insert(i, (i / wtSize) * 4);
+                else if (i < wtSize * 0.75)
+                    waveTable.insert(i, 2 - ((i / wtSize) * 4));
+                else
+                    waveTable.insert(i, (i / wtSize) * 4 - 4.0);
+            }
     }
 
     void getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill) override
     {
         // Your audio-processing code goes here!
+        float* const leftSpeaker = bufferToFill.buffer->getWritePointer(0, bufferToFill.startSample);
+        float* const rightSpeaker = bufferToFill.buffer->getWritePointer(1, bufferToFill.startSample);
+        
+        for (int sample = 0; sample < bufferToFill.numSamples; ++sample)
+        {
+            leftSpeaker[sample] = waveTable[(int)phase] * amplitude;
+            rightSpeaker[sample] = waveTable[(int)phase] * amplitude;
+            phase = fmod ((phase + increment), wtSize);
+            
+        }
 
-        // For more details, see the help for AudioProcessor::getNextAudioBlock()
-
-        // Right now we are not producing any data, in which case we need to clear the buffer
-        // (to prevent the output of random noise)
-        bufferToFill.clearActiveBufferRegion();
     }
 
     void releaseResources() override
@@ -96,6 +126,13 @@ public:
 private:
     //==============================================================================
     // Your private member variables go here...
+    Array<float> waveTable;
+    
+    double wtSize;
+    double frequency;
+    double phase;
+    double increment;
+    double amplitude;
 
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
